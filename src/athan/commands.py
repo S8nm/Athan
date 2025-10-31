@@ -832,127 +832,30 @@ class AthanCommands:
             logger.info("[TEST] No voice channel configured - test complete")
 
     async def _play_test_adhan(self, voice_channel_id: int):
-        """Play Adhan in voice channel for test."""
-        logger.info(f"[TEST] _play_test_adhan called for channel {voice_channel_id}")
+        """Play Adhan in voice channel for test using Lavalink."""
+        from athan.voice import play_adhan_in_voice_channel
         
-        voice_channel = self.bot.get_channel(voice_channel_id)
-        if not voice_channel:
-            logger.error(f"[TEST] Voice channel {voice_channel_id} not found!")
-            return
-
-        logger.info(f"[TEST] Found voice channel: {voice_channel.name}")
-
-        adhan_path = Path("assets/adhan.mp3")
-        if not adhan_path.exists():
-            logger.error(f"[TEST] Adhan audio file not found at {adhan_path.absolute()}")
-            return
-
-        logger.info(f"[TEST] Adhan file exists at {adhan_path.absolute()}")
-
-        # CHECK BOT PERMISSIONS IN VOICE CHANNEL
-        bot_member = voice_channel.guild.get_member(self.bot.user.id)
-        perms = voice_channel.permissions_for(bot_member)
-        logger.info(f"[TEST] Bot permissions in voice channel:")
-        logger.info(f"[TEST]   - Connect: {perms.connect}")
-        logger.info(f"[TEST]   - Speak: {perms.speak}")
-        logger.info(f"[TEST]   - View Channel: {perms.view_channel}")
-        logger.info(f"[TEST]   - Use Voice Activity: {perms.use_voice_activation}")
+        logger.info(f"[TEST] Playing test Adhan in channel {voice_channel_id}")
         
-        if not perms.connect or not perms.speak:
-            logger.error("[TEST] ❌ Bot doesn't have Connect or Speak permissions!")
-            return
-
-        voice_client = None
-        try:
-            # EXTREME FIX: Clean up ALL voice state
-            logger.info("[TEST] Cleaning up voice state...")
-            
-            # Disconnect from all voice clients
-            for vc in list(self.bot.voice_clients):
-                try:
-                    logger.info(f"[TEST] Force disconnecting from guild {vc.guild.id}...")
-                    await vc.disconnect(force=True)
-                except Exception as e:
-                    logger.warning(f"[TEST] Error disconnecting: {e}")
-            
-            # Wait for Discord to process
-            logger.info("[TEST] Waiting 5 seconds for Discord to clear session...")
-            await asyncio.sleep(5)
-            
-            # Try to connect with cls parameter to force new voice client
-            logger.info("[TEST] Attempting voice connection...")
-            try:
-                voice_client = await voice_channel.connect(
-                    timeout=60.0,
-                    reconnect=False,
-                    self_deaf=False,
-                    self_mute=False
-                )
-            except Exception as e:
-                logger.error(f"[TEST] Connection error: {e}")
-                logger.error("[TEST] CRITICAL: Bot cannot connect to voice. Check:")
-                logger.error("[TEST] 1. Bot has Connect + Speak permissions in voice channel")
-                logger.error("[TEST] 2. Bot was invited with correct OAuth scopes")
-                logger.error("[TEST] 3. Go to https://discord.com/developers/applications/1433463312020144189")
-                raise
-            
-            # CRITICAL: Wait for voice client to be fully ready
-            logger.info("[TEST] Waiting for voice client to be ready...")
-            ready_wait = 0
-            while not voice_client.is_connected() and ready_wait < 10:
-                await asyncio.sleep(0.5)
-                ready_wait += 1
-            
-            if not voice_client.is_connected():
-                logger.error("[TEST] Voice client failed to connect properly")
-                return
-                
-            logger.info(f"[TEST] Voice client ready! Creating audio source...")
-            
-            # Create audio source
-            audio_source = discord.FFmpegPCMAudio(str(adhan_path))
-            
-            # Play audio
-            logger.info("[TEST] Starting playback...")
-            voice_client.play(
-                audio_source,
-                after=lambda e: logger.error(f"[TEST] Playback error: {e}") if e else logger.info("[TEST] Playback finished")
-            )
-            
-            # Give it a moment to start
-            await asyncio.sleep(2)
-            
-            if voice_client.is_playing():
-                logger.info("[TEST] ✅ Audio is playing successfully!")
-                
-                # Wait for completion
-                while voice_client.is_playing():
-                    await asyncio.sleep(1)
-                    
-                logger.info("[TEST] Playback complete")
-            else:
-                logger.error("[TEST] ❌ Audio failed to start playing")
-            
-            # Disconnect
-            await asyncio.sleep(1)
-            await voice_client.disconnect()
-            logger.info("[TEST] Test complete")
-
-        except discord.ClientException as e:
-            logger.error(f"[TEST] Failed to connect to voice channel: {e}")
-            if voice_client and voice_client.is_connected():
-                await voice_client.disconnect()
-        except Exception as e:
-            logger.error(f"[TEST] Error playing test Adhan: {e}", exc_info=True)
-            if voice_client and voice_client.is_connected():
-                await voice_client.disconnect()
+        success = await play_adhan_in_voice_channel(
+            bot=self.bot,
+            voice_channel_id=voice_channel_id,
+            adhan_file="assets/adhan.mp3"
+        )
+        
+        if success:
+            logger.info("[TEST] ✅ Test Adhan playback started successfully")
+        else:
+            logger.error("[TEST] ❌ Failed to play test Adhan")
 
     async def _adhan_voice(
         self,
         interaction: discord.Interaction,
         voice_channel: discord.VoiceChannel | None,
     ):
-        """Handle /adhan_voice command."""
+        """Handle /adhan_voice command using Lavalink."""
+        from athan.voice import play_adhan_in_voice_channel
+        
         # Defer immediately to avoid timeout
         await interaction.response.defer(ephemeral=False)
 
@@ -975,69 +878,21 @@ class AthanCommands:
             )
             return
 
-        voice_client = None
-        try:
-            # Cleanup any existing connections first
-            if voice_channel.guild.voice_client:
-                logger.info("Cleaning up existing voice connection...")
-                try:
-                    await voice_channel.guild.voice_client.disconnect(force=True)
-                except:
-                    pass
-                await asyncio.sleep(2)
-            
-            logger.info("Connecting to voice channel...")
-            voice_client = await voice_channel.connect(timeout=20.0, reconnect=True)
-            
-            # Wait for voice client to be ready
-            logger.info("Waiting for voice client to be ready...")
-            ready_wait = 0
-            while not voice_client.is_connected() and ready_wait < 10:
-                await asyncio.sleep(0.5)
-                ready_wait += 1
-            
-            if not voice_client.is_connected():
-                logger.error("Voice client failed to connect")
-                await interaction.followup.send("❌ Failed to connect to voice channel.", ephemeral=True)
-                return
-            
-            logger.info("Voice client ready! Playing Adhan...")
-            
-            # Create and play audio
-            audio_source = discord.FFmpegPCMAudio(str(adhan_path))
-            voice_client.play(audio_source)
-            
-            await asyncio.sleep(2)
-            
-            if voice_client.is_playing():
-                await interaction.followup.send(f"🔊 Playing Adhan in {voice_channel.mention}")
-                
-                # Wait for completion
-                max_wait = 300
-                waited = 0
-                while voice_client.is_playing() and waited < max_wait:
-                    await asyncio.sleep(1)
-                    waited += 1
-                
-                if waited >= max_wait:
-                    logger.warning("Adhan playback timed out")
-            else:
-                await interaction.followup.send("❌ Failed to play audio.", ephemeral=True)
-            
-            # Disconnect
-            await asyncio.sleep(1)
-            await voice_client.disconnect()
+        # Play Adhan using Lavalink
+        success = await play_adhan_in_voice_channel(
+            bot=self.bot,
+            voice_channel_id=voice_channel.id,
+            adhan_file=adhan_path
+        )
+        
+        if success:
+            await interaction.followup.send(f"🔊 Playing Adhan in {voice_channel.mention}")
             logger.info(f"Played Adhan in guild {interaction.guild_id}")
-
-        except discord.ClientException as e:
-            await interaction.followup.send(f"Failed to join voice channel: {e}", ephemeral=True)
-            if voice_client and voice_client.is_connected():
-                await voice_client.disconnect()
-        except Exception as e:
-            logger.error(f"Voice playback error: {e}")
-            await interaction.followup.send("An error occurred during playback.", ephemeral=True)
-            if voice_client and voice_client.is_connected():
-                await voice_client.disconnect()
+        else:
+            await interaction.followup.send(
+                "❌ Failed to play Adhan. Make sure Lavalink server is running.",
+                ephemeral=True
+            )
 
     async def _status(self, interaction: discord.Interaction):
         """Handle /status command."""

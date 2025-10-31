@@ -92,6 +92,19 @@ if (-not (Test-Path "data")) {
     Write-Host "[OK] Data directory exists" -ForegroundColor Green
 }
 
+# Check if Lavalink is running
+Write-Host ""
+Write-Host "Checking Lavalink server..." -ForegroundColor Cyan
+try {
+    $response = Invoke-WebRequest -Uri "http://localhost:2333/version" -TimeoutSec 2 -ErrorAction Stop
+    Write-Host "[OK] Lavalink is running" -ForegroundColor Green
+} catch {
+    Write-Host "[WARN] Lavalink not detected" -ForegroundColor Yellow
+    Write-Host "       Voice features require Lavalink server" -ForegroundColor Yellow
+    Write-Host "       Run .\start_lavalink.ps1 in another terminal" -ForegroundColor White
+    Write-Host "       Or see LAVALINK_SETUP.md for details" -ForegroundColor White
+}
+
 Write-Host ""
 Write-Host "Starting Athan Bot..." -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan

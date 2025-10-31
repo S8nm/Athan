@@ -51,6 +51,9 @@ class BotSettings(BaseSettings):
         alias="MUSLIMSALAT_API_KEY",
         description="API key for MuslimSalat.com prayer times API"
     )
+    lavalink_host: str = Field(default="localhost", alias="LAVALINK_HOST")
+    lavalink_port: int = Field(default=2333, alias="LAVALINK_PORT")
+    lavalink_password: str = Field(default="youshallnotpass", alias="LAVALINK_PASSWORD")
     database_path: str = Field(default="data/athan.db", alias="DATABASE_PATH")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 

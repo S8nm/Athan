@@ -4,6 +4,7 @@ import logging
 import sys
 
 import discord
+import wavelink
 from discord import Intents
 
 from athan.commands import AthanCommands
@@ -41,6 +42,18 @@ class AthanBot(discord.Client):
     async def setup_hook(self):
         """Initialize bot components and sync commands."""
         logger.info("Setting up bot components...")
+
+        # Initialize Wavelink (Lavalink)
+        try:
+            node: wavelink.Node = wavelink.Node(
+                uri=f"http://{self.settings.lavalink_host}:{self.settings.lavalink_port}",
+                password=self.settings.lavalink_password,
+            )
+            await wavelink.Pool.connect(client=self, nodes=[node])
+            logger.info("Connected to Lavalink server")
+        except Exception as e:
+            logger.warning(f"Failed to connect to Lavalink: {e}")
+            logger.warning("Voice features will not work without Lavalink running")
 
         # Initialize database
         ensure_data_directory()

@@ -178,86 +178,20 @@ class PrayerScheduler:
             await self._play_voice_adhan(settings.voice_channel_id, prayer)
 
     async def _play_voice_adhan(self, voice_channel_id: int, prayer: Prayer):
-        """Play Adhan in voice channel."""
-        from pathlib import Path
+        """Play Adhan in voice channel using Lavalink."""
+        from athan.voice import play_adhan_in_voice_channel
 
-        voice_channel = self.bot.get_channel(voice_channel_id)
-        if not voice_channel:
-            logger.warning(f"Voice channel {voice_channel_id} not found")
-            return
-
-        adhan_path = Path("assets/adhan.mp3")
-        if not adhan_path.exists():
-            logger.warning("Adhan audio file not found at assets/adhan.mp3")
-            return
-
-        voice_client = None
-        try:
-            # Cleanup any existing connections first
-            if voice_channel.guild.voice_client:
-                logger.info(f"Cleaning up existing voice connection for {prayer.value}...")
-                try:
-                    await voice_channel.guild.voice_client.disconnect(force=True)
-                except:
-                    pass
-                await asyncio.sleep(2)
-            
-            logger.info(f"Connecting to voice channel for {prayer.value}...")
-            voice_client = await voice_channel.connect(timeout=20.0, reconnect=True)
-            
-            # CRITICAL: Wait for voice client to be fully ready
-            logger.info("Waiting for voice client to be ready...")
-            ready_wait = 0
-            while not voice_client.is_connected() and ready_wait < 10:
-                await asyncio.sleep(0.5)
-                ready_wait += 1
-            
-            if not voice_client.is_connected():
-                logger.error(f"Voice client failed to connect for {prayer.value}")
-                return
-                
-            logger.info(f"Voice client ready! Playing Adhan for {prayer.value}...")
-            
-            # Create and play audio
-            audio_source = discord.FFmpegPCMAudio(str(adhan_path))
-            voice_client.play(
-                audio_source,
-                after=lambda e: logger.error(f"Playback error: {e}") if e else logger.info("Playback finished")
-            )
-            
-            # Wait for playback to start
-            await asyncio.sleep(2)
-            
-            if voice_client.is_playing():
-                logger.info(f"✅ Adhan playing for {prayer.value}")
-                
-                # Wait for completion (with timeout)
-                max_wait = 300
-                waited = 0
-                while voice_client.is_playing() and waited < max_wait:
-                    await asyncio.sleep(1)
-                    waited += 1
-                    
-                if waited >= max_wait:
-                    logger.warning(f"Playback timeout for {prayer.value}")
-                else:
-                    logger.info(f"Playback complete for {prayer.value}")
-            else:
-                logger.error(f"❌ Audio failed to start for {prayer.value}")
-            
-            # Disconnect
-            await asyncio.sleep(1)
-            await voice_client.disconnect()
-            logger.info(f"Disconnected voice for {prayer.value}")
-
-        except discord.ClientException as e:
-            logger.error(f"Failed to connect to voice channel: {e}")
-            if voice_client and voice_client.is_connected():
-                await voice_client.disconnect()
-        except Exception as e:
-            logger.error(f"Error playing voice Adhan: {e}", exc_info=True)
-            if voice_client and voice_client.is_connected():
-                await voice_client.disconnect()
+        logger.info(f"Playing Adhan for {prayer.value} prayer")
+        success = await play_adhan_in_voice_channel(
+            bot=self.bot,
+            voice_channel_id=voice_channel_id,
+            adhan_file="assets/adhan.mp3"
+        )
+        
+        if success:
+            logger.info(f"✅ Adhan playback started for {prayer.value}")
+        else:
+            logger.error(f"❌ Failed to play Adhan for {prayer.value}")
 
     def _create_prayer_embed(
         self, prayer: Prayer, prayer_time: datetime, settings: GuildSettings

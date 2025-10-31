@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: athan-lavalink
+    restart: unless-stopped
+    environment:
+      - JAVA_OPTS=-Xmx512M
+    volumes:
+      - ./lavalink-config.yml:/opt/Lavalink/application.yml:ro
+    ports:
+      - "2333:2333"
+    networks:
+      - athan-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2333/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  bot:
+    build: .
+    container_name: athan-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - LAVALINK_HOST=lavalink
+      - LAVALINK_PORT=2333
+    volumes:
+      - ./data:/app/data
+      - ./assets:/app/assets:ro
+    depends_on:
+      lavalink:
+        condition: service_healthy
+    networks:
+      - athan-network
+
+networks:
+  athan-network:
+    driver: bridge
+

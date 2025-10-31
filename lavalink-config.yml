@@ -1,0 +1,21 @@
+server:
+  port: 2333
+  address: 0.0.0.0
+
+lavalink:
+  server:
+    password: "youshallnotpass"
+    sources:
+      local: true
+      http: true
+      youtube: false
+      bandcamp: false
+      soundcloud: false
+      twitch: false
+      vimeo: false
+
+logging:
+  level:
+    root: INFO
+    lavalink: INFO
+
