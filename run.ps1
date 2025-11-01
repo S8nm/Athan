@@ -95,19 +95,65 @@ if (-not (Test-Path "data")) {
 # Check if Lavalink is running
 Write-Host ""
 Write-Host "Checking Lavalink server..." -ForegroundColor Cyan
+$lavalink_running = $false
 try {
     $response = Invoke-WebRequest -Uri "http://localhost:2333/version" -TimeoutSec 2 -ErrorAction Stop
-    Write-Host "[OK] Lavalink is running" -ForegroundColor Green
+    Write-Host "[OK] Lavalink is already running" -ForegroundColor Green
+    $lavalink_running = $true
 } catch {
-    Write-Host "[WARN] Lavalink not detected" -ForegroundColor Yellow
-    Write-Host "       Voice features require Lavalink server" -ForegroundColor Yellow
-    Write-Host "       Run .\start_lavalink.ps1 in another terminal" -ForegroundColor White
-    Write-Host "       Or see LAVALINK_SETUP.md for details" -ForegroundColor White
+    Write-Host "[INFO] Lavalink not detected, starting it now..." -ForegroundColor Yellow
+    
+    # Check if start_lavalink.ps1 exists
+    if (Test-Path "start_lavalink.ps1") {
+        try {
+            # Start Lavalink in a new PowerShell window
+            Write-Host "[INFO] Opening new terminal for Lavalink..." -ForegroundColor Cyan
+            $lavalink_path = Join-Path $PSScriptRoot "start_lavalink.ps1"
+            Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$lavalink_path`""
+            
+            # Wait for Lavalink to start (up to 30 seconds)
+            Write-Host "[INFO] Waiting for Lavalink to start (this may take 10-30 seconds)..." -ForegroundColor Cyan
+            $max_wait = 30
+            $waited = 0
+            while ($waited -lt $max_wait) {
+                Start-Sleep -Seconds 2
+                $waited += 2
+                try {
+                    $test = Invoke-WebRequest -Uri "http://localhost:2333/version" -TimeoutSec 1 -ErrorAction Stop
+                    Write-Host "[OK] Lavalink started successfully!" -ForegroundColor Green
+                    $lavalink_running = $true
+                    break
+                } catch {
+                    Write-Host "." -NoNewline -ForegroundColor Gray
+                }
+            }
+            Write-Host ""
+            
+            if (-not $lavalink_running) {
+                Write-Host "[WARN] Lavalink taking longer than expected to start" -ForegroundColor Yellow
+                Write-Host "       Check the Lavalink terminal window for errors" -ForegroundColor Yellow
+                Write-Host "       The bot will continue, but voice features may not work immediately" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host "[ERROR] Failed to start Lavalink: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "       You can manually run: .\start_lavalink.ps1" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "[WARN] start_lavalink.ps1 not found" -ForegroundColor Yellow
+        Write-Host "       Voice features will not work without Lavalink" -ForegroundColor Yellow
+        Write-Host "       See LAVALINK_SETUP.md for manual setup" -ForegroundColor White
+    }
 }
 
 Write-Host ""
 Write-Host "Starting Athan Bot..." -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan
+Write-Host ""
+if ($lavalink_running) {
+    Write-Host "✓ Lavalink: Running" -ForegroundColor Green
+} else {
+    Write-Host "✗ Lavalink: Not running (voice features disabled)" -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "Press Ctrl+C to stop the bot" -ForegroundColor Gray
 Write-Host ""
