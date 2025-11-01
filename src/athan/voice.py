@@ -26,13 +26,26 @@ async def play_adhan_in_voice_channel(
         True if playback started successfully, False otherwise
     """
     try:
-        # Get voice channel
+        # Get voice channel (try cache first, then fetch from API)
         voice_channel = bot.get_channel(voice_channel_id)
-        if not voice_channel or not isinstance(
-            voice_channel, (discord.VoiceChannel, discord.StageChannel)
-        ):
-            logger.error(f"Voice channel {voice_channel_id} not found or invalid")
+        
+        # If not in cache, fetch from Discord API
+        if not voice_channel:
+            try:
+                voice_channel = await bot.fetch_channel(voice_channel_id)
+            except discord.NotFound:
+                logger.error(f"Voice channel {voice_channel_id} not found")
+                return False
+            except Exception as e:
+                logger.error(f"Error fetching voice channel {voice_channel_id}: {e}")
+                return False
+        
+        # Verify it's a voice channel
+        if not isinstance(voice_channel, (discord.VoiceChannel, discord.StageChannel)):
+            logger.error(f"Channel {voice_channel_id} is not a voice channel (type: {type(voice_channel)})")
             return False
+        
+        logger.info(f"Found voice channel: {voice_channel.name} (ID: {voice_channel_id})")
 
         # Check if adhan file exists
         adhan_path = Path(adhan_file)
