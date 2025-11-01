@@ -150,9 +150,9 @@ Write-Host "Starting Athan Bot..." -ForegroundColor Cyan
 Write-Host "================================" -ForegroundColor Cyan
 Write-Host ""
 if ($lavalink_running) {
-    Write-Host "✓ Lavalink: Running" -ForegroundColor Green
+    Write-Host "[OK] Lavalink: Running" -ForegroundColor Green
 } else {
-    Write-Host "✗ Lavalink: Not running (voice features disabled)" -ForegroundColor Yellow
+    Write-Host "[WARN] Lavalink: Not running (voice features disabled)" -ForegroundColor Yellow
 }
 Write-Host ""
 Write-Host "Press Ctrl+C to stop the bot" -ForegroundColor Gray
