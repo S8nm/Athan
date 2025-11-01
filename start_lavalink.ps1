@@ -68,6 +68,25 @@ if (-not (Test-Path $LAVALINK_CONFIG)) {
     }
 }
 
+# Kill any existing Lavalink processes
+Write-Host ""
+Write-Host "Checking for existing Lavalink processes..." -ForegroundColor Cyan
+try {
+    $processes = Get-NetTCPConnection -LocalPort 2333 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
+    if ($processes) {
+        Write-Host "[INFO] Found Lavalink process on port 2333, stopping it..." -ForegroundColor Yellow
+        foreach ($processId in $processes) {
+            Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+        }
+        Start-Sleep -Seconds 2
+        Write-Host "[OK] Old processes cleared" -ForegroundColor Green
+    } else {
+        Write-Host "[OK] Port 2333 is available" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "[OK] Port check complete" -ForegroundColor Green
+}
+
 # Start Lavalink
 Write-Host ""
 Write-Host "[4/4] Starting Lavalink server..." -ForegroundColor Cyan
